@@ -20,7 +20,8 @@ setup(
         'console_scripts': [
             'azrcmd-ls = azrcmd:ls',
             'azrcmd-put = azrcmd:put',
-            'azrcmd-rm = azrcmd:rm'
+            'azrcmd-rm = azrcmd:rm',
+            'azrcmd-get = azrcmd:get'
         ],
     },
     url = 'http://bfaludi.com'

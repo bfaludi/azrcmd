@@ -71,7 +71,6 @@ class BlobStorage(object):
             sys.exit(1)
 
         self.dryrun = dryrun
-        self.dryrun_ok = 'OK' if not self.dryrun else 'IGNORE (--dryrun)'
         self.schema, self.container, _, self.blob_path = match.groups(0)
         self.blob_path = self.blob_path or None
         self.service = BlobService(
@@ -82,7 +81,17 @@ class BlobStorage(object):
     def url(self):
         return u'{}://{}'.format(self.schema, self.container)
 
-    # genexp<list<str>>
+    @property
+    def path(self):
+        return u'{}@{}'.format(self.url, self.blob_path)
+
+    # Blob
+    def get_blob(self):
+        for blob in self.list_blobs():
+            if blob.path == self.blob_path:
+                return blob
+
+    # genexp<list<Blob>>
     def list_blobs(self):
         marker = None
         while True:
@@ -94,16 +103,40 @@ class BlobStorage(object):
             marker = batch.next_marker
 
     # void
-    def remove_blobs(self):
+    def execute(self, executable_fn, message, **kwargs):
+        # Print the original message
+        print((message + ' ... ') % kwargs, end='')
+
+        # If dryrun, write the message and exit
+        if self.dryrun:
+            print('IGNORE (--dryrun)')
+            return
+
+        try:
+            executable_fn(**kwargs)
+            print('OK')
+        except Exception as e:
+            print('FAIL\n{}'.format(e))
+
+    # void
+    def remove_fn(self, path, url=None):
+        self.service.delete_blob(self.container, path)
+
+    # void
+    def remove_blobs(self, prefix=False):
         if not self.blob_path:
             print(u'Have to specify the path of the blob.')
             sys.exit(1)
 
+        if not prefix:
+            return self.execute(self.remove_fn, 'Remove blob from `%(url)s`', path=self.blob_path, url=self.path)
+
         for blob in self.list_blobs():
-            print(u'Deleting blob `{}` ... '.format(blob.url), end='')
-            if not self.dryrun:
-                self.service.delete_blob(self.container, blob.path)
-            print(self.dryrun_ok)
+            self.execute(self.remove_fn, 'Remove blob from `%(url)s`', path=blob.path, url=blob.url)
+
+    # void
+    def upload_fn(self, blob_path, file_path, rel_file_path=None, url=None):
+        self.service.put_block_blob_from_path(self.container, blob_path, file_path)
 
     # void
     def upload_blob(self, file_path, common_prefix=None):
@@ -114,10 +147,9 @@ class BlobStorage(object):
         if common_prefix:
             blob_path = os.path.join(blob_path, file_path.split(common_prefix)[-1].strip('/'))
 
-        print(u'Uploading `{}` into `{}` ... '.format(os.path.relpath(file_path), blob_path), end='')
-        if not self.dryrun:
-            self.service.put_block_blob_from_path(self.container, blob_path, file_path)
-        print(self.dryrun_ok)
+        self.execute(self.upload_fn, 'Upload `%(rel_file_path)s` into `%(url)s`', \
+            file_path=file_path, rel_file_path=os.path.relpath(file_path), blob_path=blob_path, \
+            url=u'{}@{}'.format(self.url, blob_path))
 
     # void
     def upload_blobs(self, file_paths):
@@ -128,6 +160,36 @@ class BlobStorage(object):
         if not self.blob_path.endswith('/'): self.blob_path += '/'
         for file_path in file_paths:
             self.upload_blob(file_path, common_prefix=common_prefix)
+
+    # void
+    def download_fn(self, blob_path, file_path, **kwargs):
+        self.service.get_blob_to_path(self.container, blob_path, file_path)
+
+    # void
+    def download_blob(self, blob_path, file_path, common_prefix=None):
+        file_path = os.path.join(file_path, os.path.split(blob_path)[-1]) \
+            if os.path.isdir(file_path) and not common_prefix \
+            else file_path
+
+        if common_prefix:
+            file_path = os.path.join(file_path, blob_path.split(common_prefix)[-1].strip('/'))
+            dir_path = os.path.split(file_path)[0]
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+
+        self.execute(self.download_fn, 'Download `%(url)s` into `%(rel_file_path)s`', \
+            blob_path=blob_path, file_path=file_path, rel_file_path=os.path.relpath(file_path), \
+            url=u'{}@{}'.format(self.url, blob_path))
+
+    # void
+    def download_blobs(self, file_path, prefix=False):
+        if not prefix:
+            return self.download_blob(self.blob_path, file_path)
+
+        blob_paths = [ blob.path for blob in self.list_blobs() ]
+        common_prefix = os.path.split(os.path.commonprefix(blob_paths))[0]
+        for blob_path in blob_paths:
+            self.download_blob(blob_path, file_path, common_prefix=common_prefix)
 
 # void
 def ls(args=sys.argv[1:]):
@@ -143,13 +205,14 @@ def ls(args=sys.argv[1:]):
 # void
 def rm(args=sys.argv[1:]):
     parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--prefix', help='download all blobs with prefix', action='store_true')
     parser.add_argument('--dryrun', help='just printing and not deleting.', action='store_true')
     parser.add_argument('wasbs_path', help='remote path for Azure Blob Storage.')
     args = parser.parse_args(args)
     check_credentials()
 
     storage = BlobStorage(args.wasbs_path, args.dryrun)
-    storage.remove_blobs()
+    storage.remove_blobs(args.prefix)
 
 # void
 def put(args=sys.argv[1:]):
@@ -164,3 +227,19 @@ def put(args=sys.argv[1:]):
     paths = list(get_local_files(args.file_path, recursive=args.recursive))
     storage = BlobStorage(args.wasbs_path, args.dryrun)
     storage.upload_blobs(paths)
+
+# void
+def get(args=sys.argv[1:]):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--prefix', help='download all blobs with prefix', action='store_true')
+    parser.add_argument('--dryrun', help='just printing and not deleting.', action='store_true')
+    parser.add_argument('wasbs_path', help='remote path for Azure Blob Storage.')
+    parser.add_argument('file_path', help='local file or directory path.')
+    args = parser.parse_args(args)
+    check_credentials()
+
+    if not os.path.exists(args.file_path) and args.file_path.endswith('/'):
+        os.makedirs(args.file_path)
+
+    storage = BlobStorage(args.wasbs_path, args.dryrun)
+    storage.download_blobs(os.path.abspath(args.file_path), args.prefix)
