@@ -2,6 +2,13 @@
 
 Azure Blob Store command line tool to download and upload files.
 
+**UNDER DEVELOPMENT!**
+
+TO-DOs:
+- Tests are missing to validate the input/output paths.
+- Check with large files.
+- Add configuration to modify `max_connections` number.
+
 ## Installation
 
 You can install easily.
