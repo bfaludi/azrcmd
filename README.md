@@ -44,7 +44,7 @@ $ azrcmd-put filepart* wasbc://container@path/
 If you want to upload full directories than you have to define the `--recursive` parameter.
 
 ```bash
-$ azrcmd-put --recursive dirname/ wasbc://container@path/
+$ azrcmd-put --recursive dirname/ wasbc://container@path/dirname/
 ```
 
 Furthermore, if you want to test the function you can use the `--dryrun` parameter.
