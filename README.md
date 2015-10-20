@@ -24,6 +24,7 @@ Create your configuration file as a bash script or put this information on your 
 ```sh
 export AZURE_STORAGE_ACCOUNT=""
 export AZURE_STORAGE_ACCESS_KEY=""
+export AZURE_STORAGE_MAX_CONNECTIONS=5
 ```
 
 ## Upload files

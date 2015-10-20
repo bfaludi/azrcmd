@@ -15,6 +15,12 @@ class NotSupported(RuntimeError):
 class InvalidBlobStorePath(AttributeError):
     pass
 
+class BlobPathRequired(AttributeError):
+    pass
+
+class DirectoryRequired(AttributeError):
+    pass
+
 # void
 def check_credentials():
     if 'AZURE_STORAGE_ACCOUNT' not in os.environ:
@@ -144,10 +150,11 @@ class BlobStorage(object):
 
     # void
     def upload_fn(self, blob_path, file_path, rel_file_path=None, url=None):
-        self.service.put_block_blob_from_path(self.container, blob_path, file_path)
+        self.service.put_block_blob_from_path(self.container, blob_path, file_path, \
+            max_connections=int(os.environ.get('AZURE_STORAGE_MAX_CONNECTIONS',1)))
 
     # tuple<str,str>
-    def get_upload_blob_pair(self, file_path, common_prefix=None):
+    def get_upload_path_pair(self, file_path, common_prefix=None):
         is_directory_ending = self.blob_path and self.blob_path.endswith('/')
         is_container_path = self.blob_path is None
 
@@ -164,55 +171,75 @@ class BlobStorage(object):
         elif common_prefix == u'' and not blob_path:
             blob_path = file_path.strip('/')
 
-        return file_path, blob_path
+        return (file_path, blob_path)
 
-    # tuple<str,str>
+    # genexp<tuple<str,str>>
     def get_upload_path_pairs(self, file_paths):
         if len(file_paths) == 1:
-            yield self.get_upload_blob_pair(file_paths[0])
+            yield self.get_upload_path_pair(file_paths[0])
             return
 
         common_prefix = os.path.split(os.path.commonprefix(file_paths))[0]
         if self.blob_path and not self.blob_path.endswith('/'): self.blob_path += '/'
         for file_path in file_paths:
-            yield self.get_upload_blob_pair(file_path, common_prefix=common_prefix)
+            yield self.get_upload_path_pair(file_path, common_prefix=common_prefix)
 
     # void
     def upload_blobs(self, file_paths):
-        for file_path, blob_path in self.get_upload_blob_pair(file_paths):
+        for file_path, blob_path in self.get_upload_path_pairs(file_paths):
             self.execute(self.upload_fn, 'Upload `%(rel_file_path)s` into `%(url)s`', \
                 file_path=file_path, rel_file_path=os.path.relpath(file_path), blob_path=blob_path, \
                 url=u'{}@{}'.format(self.url, blob_path))
 
     # void
     def download_fn(self, blob_path, file_path, **kwargs):
-        self.service.get_blob_to_path(self.container, blob_path, file_path)
+        self.service.get_blob_to_path(self.container, blob_path, file_path, \
+            max_connections=int(os.environ.get('AZURE_STORAGE_MAX_CONNECTIONS',1)))
 
-    # void
-    def download_blob(self, blob_path, file_path, common_prefix=None):
+    # tuple<str,str>
+    def get_download_path_pair(self, blob_path, file_path, common_prefix=None):
         file_path = os.path.join(file_path, os.path.split(blob_path)[-1]) \
-            if os.path.isdir(file_path) and not common_prefix \
+            if os.path.exists(file_path) and os.path.isdir(file_path) and common_prefix is None \
             else file_path
 
+        # print(repr(file_path), repr(blob_path), repr(common_prefix))
         if common_prefix:
             file_path = os.path.join(file_path, blob_path.split(common_prefix)[-1].strip('/'))
-            dir_path = os.path.split(file_path)[0]
-            if not os.path.exists(dir_path):
-                os.makedirs(dir_path)
+        elif common_prefix == u'':
+            file_path = os.path.join(file_path, blob_path.strip('/'))
 
-        self.execute(self.download_fn, 'Download `%(url)s` into `%(rel_file_path)s`', \
-            blob_path=blob_path, file_path=file_path, rel_file_path=os.path.relpath(file_path), \
-            url=u'{}@{}'.format(self.url, blob_path))
+        dir_path = os.path.split(file_path)[0]
+        if dir_path and not os.path.exists(dir_path):
+            os.makedirs(dir_path)
 
-    # void
-    def download_blobs(self, file_path, prefix=False):
+        return blob_path, file_path
+
+    # genexp<tuple<str,str>>
+    def get_download_path_pairs(self, file_path, prefix=False):
+        if not self.blob_path:
+            raise BlobPathRequired(u'Blob path is required for `get` command.')
+
         if not prefix:
-            return self.download_blob(self.blob_path, file_path)
+            yield self.get_download_path_pair(self.blob_path, file_path)
+            return
 
         blob_paths = [ blob.path for blob in self.list_blobs() ]
         common_prefix = os.path.split(os.path.commonprefix(blob_paths))[0]
+        resolved_file_paths = []
         for blob_path in blob_paths:
-            self.download_blob(blob_path, file_path, common_prefix=common_prefix)
+            bp, fp = self.get_download_path_pair(blob_path, file_path, common_prefix=common_prefix)
+            if fp in resolved_file_paths:
+                raise DirectoryRequired('Can not use the same path (`{}`) for multiple blob!' \
+                    .format(fp))
+            resolved_file_paths.append(fp)
+            yield bp, fp
+
+    # void
+    def download_blobs(self, file_path, prefix=False):
+        for blob_path, file_path in self.get_download_path_pairs(file_path, prefix=prefix):
+            self.execute(self.download_fn, 'Download `%(url)s` into `%(rel_file_path)s`', \
+                blob_path=blob_path, file_path=file_path, rel_file_path=os.path.relpath(file_path), \
+                url=u'{}@{}'.format(self.url, blob_path))
 
 # void
 def ls(args=sys.argv[1:]):

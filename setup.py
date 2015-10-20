@@ -14,6 +14,7 @@ setup(
     author_email = 'befaludi@microsoft.com',
     license = 'MIT',
     install_requires = [
+        'azure',
         'azure-storage',
     ],
     entry_points = {
