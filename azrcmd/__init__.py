@@ -12,6 +12,9 @@ class CredentialsMissing(RuntimeError):
 class NotSupported(RuntimeError):
     pass
 
+class InvalidBlobStorePath(AttributeError):
+    pass
+
 # void
 def check_credentials():
     if 'AZURE_STORAGE_ACCOUNT' not in os.environ:
@@ -71,9 +74,9 @@ class Blob(object):
 class BlobStorage(object):
     # void
     def __init__(self, wasbs_path, dryrun=False):
-        match = re.match(r'^(.*)://([^@]*)(\@(.+)|)$', wasbs_path)
+        match = re.match(r'^(.*)://([^@\/\\]*)(\@(.+)|)$', wasbs_path)
         if not match:
-            raise NotSupported('Remote path is not supported! Expected format: `wasbs://container@blob-path`')
+            raise InvalidBlobStorePath('Remote path is not supported! Expected format: `wasbs://container@blob-path`')
 
         self.dryrun = dryrun
         self.schema, self.container, _, self.blob_path = match.groups(0)
@@ -244,8 +247,8 @@ def put(args=sys.argv[1:]):
     args = parser.parse_args(args)
     check_credentials()
 
-    paths = list(get_local_files(args.file_path, recursive=args.recursive))
     storage = BlobStorage(args.wasbs_path, args.dryrun)
+    paths = list(get_local_files(args.file_path, recursive=args.recursive))
     storage.upload_blobs(paths)
 
 # void

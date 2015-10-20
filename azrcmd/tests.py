@@ -2,6 +2,27 @@ import os
 import unittest
 from azrcmd import *
 
+class TestInvalidBlobStorageURL(unittest.TestCase):
+    def setUp(self):
+        os.environ['AZURE_STORAGE_ACCOUNT'] = 'account'
+        os.environ['AZURE_STORAGE_ACCESS_KEY'] = 'key'
+
+    def test_put(self):
+        with self.assertRaises(InvalidBlobStorePath):
+            put(['example.txt', 'wasbs://container/example.txt'])
+
+    def test_get(self):
+        with self.assertRaises(InvalidBlobStorePath):
+            get(['wasbs://container/example.txt', 'example.txt'])
+
+    def test_ls(self):
+        with self.assertRaises(InvalidBlobStorePath):
+            ls(['wasbs://container/example'])
+
+    def test_rm(self):
+        with self.assertRaises(InvalidBlobStorePath):
+            rm(['wasbs://container/example.txt'])
+
 class TestCredentials(unittest.TestCase):
     def setUp(self):
         for k in ['AZURE_STORAGE_ACCOUNT','AZURE_STORAGE_ACCESS_KEY']:
@@ -24,7 +45,7 @@ class TestCredentials(unittest.TestCase):
         with self.assertRaises(CredentialsMissing):
             rm(['wasbs://container@example.txt'])
 
-class TestPut(unittest.TestCase):
+class TestPutPaths(unittest.TestCase):
     def setUp(self):
         os.environ['AZURE_STORAGE_ACCOUNT'] = 'account'
         os.environ['AZURE_STORAGE_ACCESS_KEY'] = 'key'
@@ -126,3 +147,7 @@ class TestPut(unittest.TestCase):
         self.assertEqual(res[0], ('dir1/f1.txt','dir1/f1.txt'))
         self.assertEqual(res[1], ('dir1/subdir/f2.txt','dir1/subdir/f2.txt'))
         self.assertEqual(res[2], ('dir2/f3.txt','dir2/f3.txt'))
+
+class TestGetPaths(unittest.TestCase):
+    pass
+
