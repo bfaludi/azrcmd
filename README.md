@@ -6,6 +6,7 @@
 ![License](https://img.shields.io/pypi/l/azrcmd.svg)
 
 Azure Blob Store command line tool to download and upload files. It works in Python **2.7 & 3.3+**.
+This package was crafted for using Azure Blob Store in **Linux** or **OSX**! Windows is not supported.
 
 ## Installation
 
@@ -25,7 +26,9 @@ export AZURE_STORAGE_ACCESS_KEY=""
 export AZURE_STORAGE_MAX_CONNECTIONS=5
 ```
 
-## Upload files
+## Usage
+
+#### Upload files
 
 You can upload a file easily:
 
@@ -48,7 +51,7 @@ $ azrcmd-put --recursive dirname/ wasbc://container@path/dirname/
 
 Furthermore, if you want to test the function you can use the `--dryrun` parameter.
 
-## Download files
+#### Download files
 
 Download a single file with
 
@@ -65,7 +68,7 @@ $ azrcmd-get --prefix wasbc://container@path-prefix dirname/
 
 You can test the methods with the `--dryrun` parameter.
 
-## List files
+#### List files
 
 List all blobs with the given prefix.
 
@@ -73,7 +76,7 @@ List all blobs with the given prefix.
 $ azrcmd-ls wasbc://container@path-prefix
 ```
 
-## Delete files
+#### Delete files
 
 Delete a single blob with the following command:
 
@@ -92,6 +95,7 @@ You can test the methods with the `--dryrun` parameter.
 ## What's next?
 
 - Add `--sync` parameter to do not upload or download unchanged files.
+- Symlink support (ignoring circles).
 - etc.
 
 ## License
