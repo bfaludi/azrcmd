@@ -5,17 +5,17 @@
 ![Version](https://img.shields.io/pypi/v/azrcmd.svg)
 ![License](https://img.shields.io/pypi/l/azrcmd.svg)
 
-Azure Blob Store command line tool to download and upload files.
+Azure Blob Store command line tool to download and upload files. It works in Python **2.7 & 3.3+**.
 
 ## Installation
 
-You can install easily.
+You can install easily with `pip`.
 
 ```bash
-$ git clone git@github.com:bfaludi/azrcmd.git
-$ cd azrcmd
-$ python setup.py install
+$ pip install azrcmd
 ```
+
+**Note**: You won't be able to install it with `easy_install` because of the incompatibility between `setuptools` and `azure` libraries. 
 
 Create your configuration file as a bash script or put this information on your `.bash_profile`.
 
@@ -88,6 +88,11 @@ $ azrcmd-rm --prefix wasbc://container@path-prefix
 ```
 
 You can test the methods with the `--dryrun` parameter.
+
+## What's next?
+
+- Add `--sync` parameter to do not upload or download unchanged files.
+- etc.
 
 ## License
 
