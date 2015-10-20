@@ -1,13 +1,11 @@
 # azrcmd
 
+[![Build Status](https://travis-ci.org/bfaludi/azrcmd.svg)](https://travis-ci.org/bfaludi/azrcmd)
+![Downloads](https://img.shields.io/pypi/dm/azrcmd.svg)
+![Version](https://img.shields.io/pypi/v/azrcmd.svg)
+![License](https://img.shields.io/pypi/l/azrcmd.svg)
+
 Azure Blob Store command line tool to download and upload files.
-
-**UNDER DEVELOPMENT!**
-
-TO-DOs:
-- Tests are missing to validate the input/output paths.
-- Check with large files.
-- Add configuration to modify `max_connections` number.
 
 ## Installation
 
