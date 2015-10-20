@@ -24,5 +24,6 @@ setup(
             'azrcmd-get = azrcmd:get'
         ],
     },
+    test_suite = 'azrcmd.tests',
     url = 'http://bfaludi.com'
 )

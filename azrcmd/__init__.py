@@ -6,15 +6,19 @@ import argparse
 from dateutil.parser import parse as parse_datetime
 from azure.storage.blob import BlobService
 
+class CredentialsMissing(RuntimeError):
+    pass
+
+class NotSupported(RuntimeError):
+    pass
+
 # void
 def check_credentials():
     if 'AZURE_STORAGE_ACCOUNT' not in os.environ:
-        print(u'Environment variable is missing: `AZURE_STORAGE_ACCOUNT`')
-        sys.exit(1)
+        raise CredentialsMissing(u'Environment variable is missing: `AZURE_STORAGE_ACCOUNT`')
 
     if 'AZURE_STORAGE_ACCESS_KEY' not in os.environ:
-        print(u'Environment variable is missing: `AZURE_STORAGE_ACCESS_KEY`')
-        sys.exit(1)
+        raise CredentialsMissing(u'Environment variable is missing: `AZURE_STORAGE_ACCESS_KEY`')
 
 # genexp<list<str>>
 def get_local_files(paths, recursive=False):
@@ -26,10 +30,12 @@ def get_local_files(paths, recursive=False):
         if os.path.isfile(path):
             yield path
 
+        elif os.path.islink(path):
+            raise NotSupported(u'Symlinks is not supported!')
+
         elif os.path.isdir(path) and not recursive:
-            print(u'Uploading directories is not supported in this mode: `{}`\nPlease use `--recursive` attribute to upload directories.' \
+            raise NotSupported(u'Uploading directories is not supported in this mode: `{}`\nPlease use `--recursive` attribute to upload directories.' \
                 .format(os.path.relpath(path)))
-            sys.exit(1)
 
         elif os.path.isdir(path) and recursive:
             sub_files = [ os.path.join(path, file_name) for file_name in os.listdir(path) ]
@@ -67,8 +73,7 @@ class BlobStorage(object):
     def __init__(self, wasbs_path, dryrun=False):
         match = re.match(r'^(.*)://([^@]*)(\@(.+)|)$', wasbs_path)
         if not match:
-            print('Remote path is not supported! Expected format: `wasbs://container@blob-path`')
-            sys.exit(1)
+            raise NotSupported('Remote path is not supported! Expected format: `wasbs://container@blob-path`')
 
         self.dryrun = dryrun
         self.schema, self.container, _, self.blob_path = match.groups(0)
@@ -138,28 +143,43 @@ class BlobStorage(object):
     def upload_fn(self, blob_path, file_path, rel_file_path=None, url=None):
         self.service.put_block_blob_from_path(self.container, blob_path, file_path)
 
-    # void
-    def upload_blob(self, file_path, common_prefix=None):
-        blob_path = os.path.join(self.blob_path, os.path.split(file_path)[-1]) \
-            if self.blob_path and self.blob_path.endswith('/') and not common_prefix \
+    # tuple<str,str>
+    def get_upload_blob_pair(self, file_path, common_prefix=None):
+        is_directory_ending = self.blob_path and self.blob_path.endswith('/')
+        is_container_path = self.blob_path is None
+
+        blob_path = os.path.join(self.blob_path or u'', os.path.split(file_path)[-1]) \
+            if any([is_container_path, is_directory_ending]) and common_prefix is None \
             else self.blob_path
 
-        if common_prefix:
+        if common_prefix and blob_path:
             blob_path = os.path.join(blob_path, file_path.split(common_prefix)[-1].strip('/'))
+        elif common_prefix and not blob_path:
+            blob_path = file_path.split(common_prefix)[-1].strip('/')
+        elif common_prefix == u'' and blob_path:
+            blob_path = os.path.join(blob_path, file_path.strip('/'))
+        elif common_prefix == u'' and not blob_path:
+            blob_path = file_path.strip('/')
 
-        self.execute(self.upload_fn, 'Upload `%(rel_file_path)s` into `%(url)s`', \
-            file_path=file_path, rel_file_path=os.path.relpath(file_path), blob_path=blob_path, \
-            url=u'{}@{}'.format(self.url, blob_path))
+        return file_path, blob_path
+
+    # tuple<str,str>
+    def get_upload_path_pairs(self, file_paths):
+        if len(file_paths) == 1:
+            yield self.get_upload_blob_pair(file_paths[0])
+            return
+
+        common_prefix = os.path.split(os.path.commonprefix(file_paths))[0]
+        if self.blob_path and not self.blob_path.endswith('/'): self.blob_path += '/'
+        for file_path in file_paths:
+            yield self.get_upload_blob_pair(file_path, common_prefix=common_prefix)
 
     # void
     def upload_blobs(self, file_paths):
-        if len(file_paths) == 1:
-            return self.upload_blob(file_paths[0])
-
-        common_prefix = os.path.split(os.path.commonprefix(file_paths))[0]
-        if not self.blob_path.endswith('/'): self.blob_path += '/'
-        for file_path in file_paths:
-            self.upload_blob(file_path, common_prefix=common_prefix)
+        for file_path, blob_path in self.get_upload_blob_pair(file_paths):
+            self.execute(self.upload_fn, 'Upload `%(rel_file_path)s` into `%(url)s`', \
+                file_path=file_path, rel_file_path=os.path.relpath(file_path), blob_path=blob_path, \
+                url=u'{}@{}'.format(self.url, blob_path))
 
     # void
     def download_fn(self, blob_path, file_path, **kwargs):
