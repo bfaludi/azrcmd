@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import sys, os
 
-version = '0.1'
+version = '0.1.1'
 
 setup(
     name = 'azrcmd',
@@ -11,7 +11,7 @@ setup(
     include_package_data = True,
     zip_safe = False,
     author = 'Bence Faludi',
-    author_email = 'befaludi@microsoft.com',
+    author_email = 'bence@ozmo.hu',
     license = 'MIT',
     install_requires = [
         'azure-storage',
