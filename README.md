@@ -2,6 +2,13 @@
 
 Azure Blob Store command line tool to download and upload files.
 
+**UNDER DEVELOPMENT!**
+
+TO-DOs:
+- Tests are missing to validate the input/output paths.
+- Check with large files.
+- Add configuration to modify `max_connections` number.
+
 ## Installation
 
 You can install easily.
@@ -24,42 +31,44 @@ export AZURE_STORAGE_ACCESS_KEY=""
 You can upload a file easily:
 
 ```bash
-$ azrcmd-put LICENSE.md wasbc://container@path/LICENSE.md
-Uploading `LICENSE.md` into `path/LICENSE.md` ... OK
+$ azrcmd-put filename wasbc://container@path/filename
+$ azrcmd-put filename wasbc://container@path/
 ```
 
-... or if the blob path's ends with `/` than it'll use the name of the file.
+Of course, you can upload multiple files with a single command:
 
 ```bash
-$ azrcmd-put LICENSE.md wasbc://container@path/
-Uploading `LICENSE.md` into `path/LICENSE.md` ... OK
-```
-
-You can upload multiple files as well:
-
-```bash
-$ azrcmd-put LICENSE* wasbc://container@path/
-Uploading `LICENSE.md` into `path/LICENSE.md` ... OK
-Uploading `LICENSE.pdf` into `path/LICENSE.pdf` ... OK
+$ azrcmd-put filepart* wasbc://container@path/
 ```
 
 If you want to upload full directories than you have to define the `--recursive` parameter.
 
 ```bash
-$ azrcmd-put --recursive azurcmd/ wasbc://container@path/
-Uploading `azrcmd/azrcmd/__init__.py` into `path/azrcmd/__init__.py` ... OK
-Uploading `azrcmd/setup.py` into `path/setup.py` ... OK
+$ azrcmd-put --recursive dirname/ wasbc://container@path/dirname/
 ```
 
 Furthermore, if you want to test the function you can use the `--dryrun` parameter.
 
 ## Download files
 
-Not implemented yet.
+Download a single file with
+
+```bash
+$ azrcmd-get wasbc://container@path/filename filename
+$ azrcmd-get wasbc://container@path/filename dirname/
+```
+
+Download files and directories with the `--prefix` parameter.
+
+```bash
+$ azrcmd-get --prefix wasbc://container@path-prefix dirname/
+```
+
+You can test the methods with the `--dryrun` parameter.
 
 ## List files
 
-It'll list all blobs with the given prefix.
+List all blobs with the given prefix.
 
 ```bash
 $ azrcmd-ls wasbc://container@path-prefix
@@ -67,11 +76,19 @@ $ azrcmd-ls wasbc://container@path-prefix
 
 ## Delete files
 
-It'll delete all blobs with the given prefix.
+Delete a single blob with the following command:
 
 ```bash
-$ azrcmd-rm wasbc://container@path-prefix
+$ azrcmd-rm wasbc://container@path/filename
 ```
+
+or multiple blobs with a prefix:
+
+```bash
+$ azrcmd-rm --prefix wasbc://container@path-prefix
+```
+
+You can test the methods with the `--dryrun` parameter.
 
 ## License
 
