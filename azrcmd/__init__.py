@@ -6,6 +6,13 @@ import argparse
 from dateutil.parser import parse as parse_datetime
 from azure.storage.blob import BlobService
 
+if sys.version_info[0] == 3:
+    import urllib.parse
+    urlparse = urllib.parse.urlparse
+else:
+    import urlparse
+    urlparse = urlparse.urlparse
+
 class CredentialsMissing(RuntimeError):
     pass
 
@@ -21,6 +28,9 @@ class BlobPathRequired(AttributeError):
 class DirectoryRequired(AttributeError):
     pass
 
+class FileIsNotExists(AttributeError):
+    pass
+
 # void
 def check_credentials():
     if 'AZURE_STORAGE_ACCOUNT' not in os.environ:
@@ -33,8 +43,7 @@ def check_credentials():
 def get_local_files(paths, recursive=False):
     for path in map(os.path.abspath, paths):
         if not os.path.exists(path):
-            print(u'File is not exits: `{}`'.format(os.path.relpath(path)))
-            sys.exit(1)
+            raise FileIsNotExists(u'File is not exits: `{}`'.format(os.path.relpath(path)))
 
         if os.path.isfile(path):
             yield path
@@ -80,12 +89,15 @@ class Blob(object):
 class BlobStorage(object):
     # void
     def __init__(self, wasbs_path, dryrun=False):
-        match = re.match(r'^(.*)://([^@\/\\]*)(\@(.+)|)$', wasbs_path)
-        if not match:
-            raise InvalidBlobStorePath('Remote path is not supported! Expected format: `wasbs://container@blob-path`')
+        parsed = urlparse(wasbs_path)
+        if parsed.scheme not in ('wasbs', 'wasb'):
+            raise InvalidBlobStorePath('Remote path is not supported! Expected format: `wasb[s]://container/blob-path`')
 
         self.dryrun = dryrun
-        self.schema, self.container, _, self.blob_path = match.groups(0)
+        self.schema, self.container, self.blob_path = parsed.scheme, parsed.netloc, parsed.path
+        if self.blob_path and self.blob_path[0] == u'/':
+            self.blob_path = self.blob_path[1:]
+
         self.blob_path = self.blob_path or None
         self.service = BlobService(
             account_name=os.environ['AZURE_STORAGE_ACCOUNT'], 

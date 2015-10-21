@@ -33,20 +33,20 @@ export AZURE_STORAGE_MAX_CONNECTIONS=5
 You can upload a file easily:
 
 ```bash
-$ azrcmd-put filename wasbc://container@path/filename
-$ azrcmd-put filename wasbc://container@path/
+$ azrcmd-put filename wasbc://container/path/filename
+$ azrcmd-put filename wasbc://container/path/
 ```
 
 Of course, you can upload multiple files with a single command:
 
 ```bash
-$ azrcmd-put filepart* wasbc://container@path/
+$ azrcmd-put filepart* wasbc://container/path/
 ```
 
 If you want to upload full directories than you have to define the `--recursive` parameter.
 
 ```bash
-$ azrcmd-put --recursive dirname/ wasbc://container@path/dirname/
+$ azrcmd-put --recursive dirname/ wasbc://container/path/dirname/
 ```
 
 Furthermore, if you want to test the function you can use the `--dryrun` parameter.
@@ -56,14 +56,14 @@ Furthermore, if you want to test the function you can use the `--dryrun` paramet
 Download a single file with
 
 ```bash
-$ azrcmd-get wasbc://container@path/filename filename
-$ azrcmd-get wasbc://container@path/filename dirname/
+$ azrcmd-get wasbc://container/path/filename filename
+$ azrcmd-get wasbc://container/path/filename dirname/
 ```
 
 Download files and directories with the `--prefix` parameter.
 
 ```bash
-$ azrcmd-get --prefix wasbc://container@path-prefix dirname/
+$ azrcmd-get --prefix wasbc://container/path-prefix dirname/
 ```
 
 You can test the methods with the `--dryrun` parameter.
@@ -73,7 +73,7 @@ You can test the methods with the `--dryrun` parameter.
 List all blobs with the given prefix.
 
 ```bash
-$ azrcmd-ls wasbc://container@path-prefix
+$ azrcmd-ls wasbc://container/path-prefix
 ```
 
 #### Delete files
@@ -81,13 +81,13 @@ $ azrcmd-ls wasbc://container@path-prefix
 Delete a single blob with the following command:
 
 ```bash
-$ azrcmd-rm wasbc://container@path/filename
+$ azrcmd-rm wasbc://container/path/filename
 ```
 
 or multiple blobs with a prefix:
 
 ```bash
-$ azrcmd-rm --prefix wasbc://container@path-prefix
+$ azrcmd-rm --prefix wasbc://container/path-prefix
 ```
 
 You can test the methods with the `--dryrun` parameter.
