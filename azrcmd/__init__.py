@@ -80,7 +80,7 @@ class Blob(object):
 
     @property
     def url(self):
-        return u'{}@{}'.format(self.service.url, self.path)
+        return os.path.join(self.service.url, self.path)
 
     @property
     def repr_last_modified(self):
@@ -109,7 +109,7 @@ class BlobStorage(object):
 
     @property
     def path(self):
-        return u'{}@{}'.format(self.url, self.blob_path)
+        return os.path.join(self.url, self.blob_path)
 
     # Blob
     def get_blob(self):
