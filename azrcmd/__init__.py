@@ -3,8 +3,10 @@ import os
 import re
 import sys
 import argparse
+from math import log
 from dateutil.parser import parse as parse_datetime
 from azure.storage.blob import BlobService
+from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 
 if sys.version_info[0] == 3:
     import urllib.parse
@@ -99,6 +101,7 @@ class BlobStorage(object):
             self.blob_path = self.blob_path[1:]
 
         self.blob_path = self.blob_path or None
+        self.pbar = None
         self.service = BlobService(
             account_name=os.environ['AZURE_STORAGE_ACCOUNT'], 
             account_key=os.environ['AZURE_STORAGE_ACCESS_KEY'])
@@ -129,9 +132,9 @@ class BlobStorage(object):
             marker = batch.next_marker
 
     # void
-    def execute(self, executable_fn, message, **kwargs):
+    def execute(self, executable_fn, message, end=None, **kwargs):
         # Print the original message
-        print((message + ' ... ') % kwargs, end='')
+        print(message % kwargs, end=end)
 
         # If dryrun, write the message and exit
         if self.dryrun:
@@ -155,15 +158,18 @@ class BlobStorage(object):
             sys.exit(1)
 
         if not prefix:
-            return self.execute(self.remove_fn, 'Remove blob from `%(url)s`', path=self.blob_path, url=self.path)
+            return self.execute(self.remove_fn, 'Remove blob from `%(url)s` ... ', path=self.blob_path, url=self.path, end='')
 
         for blob in self.list_blobs():
-            self.execute(self.remove_fn, 'Remove blob from `%(url)s`', path=blob.path, url=blob.url)
+            self.execute(self.remove_fn, 'Remove blob from `%(url)s` ... ', path=blob.path, url=blob.url, end='')
 
     # void
     def upload_fn(self, blob_path, file_path, rel_file_path=None, url=None):
         self.service.put_block_blob_from_path(self.container, blob_path, file_path, \
-            max_connections=int(os.environ.get('AZURE_STORAGE_MAX_CONNECTIONS',1)))
+            max_connections=int(os.environ.get('AZURE_STORAGE_MAX_CONNECTIONS',1)), \
+            progress_callback=self.show_progress)
+        self.pbar.finish()
+        self.pbar = None
 
     # tuple<str,str>
     def get_upload_path_pair(self, file_path, common_prefix=None):
@@ -201,12 +207,40 @@ class BlobStorage(object):
         for file_path, blob_path in self.get_upload_path_pairs(file_paths):
             self.execute(self.upload_fn, 'Upload `%(rel_file_path)s` into `%(url)s`', \
                 file_path=file_path, rel_file_path=os.path.relpath(file_path), blob_path=blob_path, \
-                url=u'{}@{}'.format(self.url, blob_path))
+                url=u'{}/{}'.format(self.url, blob_path))
+
+    # void
+    def show_progress(self, current, total):
+        def filesize(n,pow=0,b=1024,u='B',pre=['']+[p+'i'for p in'KMGTPEZY']):
+            pow,n=min(int(log(max(n*b**pow,1),b)),len(pre)-1),n*b**pow
+            return "%%.%if %%s%%s"%abs(pow%(-pow-1))%(n/b**float(pow),pre[pow],u)
+
+        if self.pbar is None:
+            self.pbar = ProgressBar(widgets=[
+                    ' '*5,
+                    'Size: {}'.format(filesize(total)),
+                    ' ',
+                    Percentage(), 
+                    ' ',
+                    Bar(),
+                    ' ', 
+                    ETA(),
+                    ' ', 
+                    FileTransferSpeed(),
+                    ' '*5
+                ], 
+                maxval=total
+            ).start()
+
+        self.pbar.update(current)
 
     # void
     def download_fn(self, blob_path, file_path, **kwargs):
         self.service.get_blob_to_path(self.container, blob_path, file_path, \
-            max_connections=int(os.environ.get('AZURE_STORAGE_MAX_CONNECTIONS',1)))
+            max_connections=int(os.environ.get('AZURE_STORAGE_MAX_CONNECTIONS',1)), \
+            progress_callback=self.show_progress)
+        self.pbar.finish()
+        self.pbar = None
 
     # tuple<str,str>
     def get_download_path_pair(self, blob_path, file_path, common_prefix=None):
@@ -251,7 +285,7 @@ class BlobStorage(object):
         for blob_path, file_path in self.get_download_path_pairs(file_path, prefix=prefix):
             self.execute(self.download_fn, 'Download `%(url)s` into `%(rel_file_path)s`', \
                 blob_path=blob_path, file_path=file_path, rel_file_path=os.path.relpath(file_path), \
-                url=u'{}@{}'.format(self.url, blob_path))
+                url=u'{}/{}'.format(self.url, blob_path))
 
 # void
 def ls(args=sys.argv[1:]):
