@@ -1,2 +1,2 @@
 azure-storage
-progressbar
+progressbar2
