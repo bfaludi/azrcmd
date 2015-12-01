@@ -82,7 +82,7 @@ class Blob(object):
 
     @property
     def url(self):
-        return os.path.join(self.service.url, self.path)
+        return os.path.join(self.service.url, self.path.strip('/'))
 
     @property
     def repr_last_modified(self):
