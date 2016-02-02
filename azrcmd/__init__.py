@@ -1,4 +1,5 @@
 from __future__ import print_function
+import io
 import os
 import re
 import sys
@@ -88,7 +89,7 @@ def get_fresher(blob, file_path):
 # byte
 def md5(fname):
     hash = hashlib.md5()
-    with open(fname, "rb") as f:
+    with io.open(fname, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash.update(chunk)
     return hash.digest()

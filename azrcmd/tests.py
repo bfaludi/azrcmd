@@ -394,15 +394,15 @@ class TestGetPaths(unittest.TestCase):
     def _touch(self, file_name, content=u''):
         if not os.path.exists(os.path.dirname(file_name)):
             os.makedirs(os.path.dirname(file_name))
-        f = io.open(file_name,'a')
+        f = io.open(file_name,'a',encoding='utf-8')
         f.write(content)
         f.close()
 
     def _get_fresh_small_blob(self):
-        return self.BlobSync('file.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) + datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest())
+        return self.BlobSync('file.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) + datetime.timedelta(minutes=5), 1, hashlib.md5(b'a').digest())
 
     def _get_old_small_blob(self):
-        return self.BlobSync('file.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest())
+        return self.BlobSync('file.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5(b'a').digest())
 
     def test_single_file_into_directory_with_name_sync_existing_same_md5_and_length(self):
         service = BlobStorage('wasbs://container/file.txt')
@@ -436,9 +436,9 @@ class TestGetPaths(unittest.TestCase):
 
     def _get_small_blob(self):
         return [
-            self.BlobSync('file-1.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) + datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest()),
-            self.BlobSync('file-2.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest()),
-            self.BlobSync('file-3.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest()),
+            self.BlobSync('file-1.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) + datetime.timedelta(minutes=5), 1, hashlib.md5(b'a').digest()),
+            self.BlobSync('file-2.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5(b'a').digest()),
+            self.BlobSync('file-3.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5(b'a').digest()),
         ]
 
     def test_prefixed_multiple_file_into_directory_sync_existing_do_nothing_and_get_the_missing(self):
