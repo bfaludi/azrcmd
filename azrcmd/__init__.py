@@ -72,7 +72,7 @@ def get_fresher(blob, file_path):
     file_dt = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(tzinfo=pytz.UTC)
     blob_cl = blob.content_length
     file_cl = os.path.getsize(file_path)
-    fresher = [blob, None, file_path][(blob_dt>file_dt)-(blob_dt<file_dt)+1]
+    fresher = [file_path, None, blob][(blob_dt>file_dt)-(blob_dt<file_dt)+1]
 
     if file_cl != blob_cl:
         return fresher

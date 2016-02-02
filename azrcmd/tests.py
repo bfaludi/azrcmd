@@ -1,6 +1,9 @@
 import io
 import os
+import pytz
 import shutil
+import hashlib
+import datetime
 import unittest
 from azrcmd import *
 
@@ -157,6 +160,15 @@ class TestGetPaths(unittest.TestCase):
             self.url = None
             self.content_length = 0
             self.last_modified = None
+            self.repr_last_modified = u''
+
+    class BlobSync(object):
+        def __init__(self, path, last_modified, content_length, content_md5):
+            self.path = path
+            self.url = None
+            self.content_length = content_length
+            self.last_modified = last_modified
+            self.content_md5 = content_md5
             self.repr_last_modified = u''
 
     def setUp(self):
@@ -368,3 +380,82 @@ class TestGetPaths(unittest.TestCase):
         self.assertEqual(len(res), 2)
         self.assertEqual(res[0], ('directory/file-2.txt','directory/file-2.txt'))
         self.assertEqual(res[1], ('directory/file-3.txt','directory/file-3.txt'))
+
+    # Test --sync attribute
+    def test_single_file_into_directory_with_name_sync_new_on_bs(self):
+        def get_blob(self):
+            return self.BlobSync('file.txt', datetime.datetime.now(), 111, 'md5hash')
+        service = BlobStorage('wasbs://container/file.txt')
+        service.get_blob = get_blob
+        res = list(service.get_download_path_pairs('directory/file.txt', sync=True))
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0], ('file.txt','directory/file.txt'))
+
+    def _touch(self, file_name, content=u''):
+        if not os.path.exists(os.path.dirname(file_name)):
+            os.makedirs(os.path.dirname(file_name))
+        f = io.open(file_name,'a')
+        f.write(content)
+        f.close()
+
+    def _get_fresh_small_blob(self):
+        return self.BlobSync('file.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) + datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest())
+
+    def _get_old_small_blob(self):
+        return self.BlobSync('file.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest())
+
+    def test_single_file_into_directory_with_name_sync_existing_same_md5_and_length(self):
+        service = BlobStorage('wasbs://container/file.txt')
+        service.get_blob = self._get_fresh_small_blob
+        self._touch('directory/file.txt',u'a')
+        res = list(service.get_download_path_pairs('directory/file.txt', sync=True))
+        self.assertEqual(len(res), 0)
+
+    def test_single_file_into_directory_with_name_sync_existing_diff_md5_and_same_length(self):
+        service = BlobStorage('wasbs://container/file.txt')
+        service.get_blob = self._get_fresh_small_blob
+        self._touch('directory/file.txt',u'b')
+        res = list(service.get_download_path_pairs('directory/file.txt', sync=True))
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0], ('file.txt','directory/file.txt'))
+
+    def test_single_file_into_directory_with_name_sync_existing_small_local_newer(self):
+        service = BlobStorage('wasbs://container/file.txt')
+        service.get_blob = self._get_old_small_blob
+        self._touch('directory/file.txt',u'sth')
+        res = list(service.get_download_path_pairs('directory/file.txt', sync=True))
+        self.assertEqual(len(res), 0)
+
+    def test_single_file_into_directory_with_name_sync_existing_small_blob_newer(self):
+        service = BlobStorage('wasbs://container/file.txt')
+        service.get_blob = self._get_fresh_small_blob
+        self._touch('directory/file.txt',u'sth')
+        res = list(service.get_download_path_pairs('directory/file.txt', sync=True))
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0], ('file.txt','directory/file.txt'))
+
+    def _get_small_blob(self):
+        return [
+            self.BlobSync('file-1.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) + datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest()),
+            self.BlobSync('file-2.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest()),
+            self.BlobSync('file-3.txt', datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(minutes=5), 1, hashlib.md5('a').digest()),
+        ]
+
+    def test_prefixed_multiple_file_into_directory_sync_existing_do_nothing_and_get_the_missing(self):
+        service = BlobStorage('wasbs://container/file.txt')
+        service.list_blobs = self._get_small_blob
+        self._touch('directory/file-1.txt',u'a')
+        self._touch('directory/file-2.txt',u'a')
+        res = list(service.get_download_path_pairs('directory/', prefix=True, sync=True))
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0], ('file-3.txt','directory/file-3.txt'))
+
+    def test_prefixed_multiple_file_into_directory_sync_existing_update_the_old_one_and_the_missing_one(self):
+        service = BlobStorage('wasbs://container/file.txt')
+        service.list_blobs = self._get_small_blob
+        self._touch('directory/file-1.txt',u'b')
+        self._touch('directory/file-2.txt',u'b')
+        res = list(service.get_download_path_pairs('directory/', prefix=True, sync=True))
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0], ('file-1.txt','directory/file-1.txt'))
+        self.assertEqual(res[1], ('file-3.txt','directory/file-3.txt'))
