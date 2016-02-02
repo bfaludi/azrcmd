@@ -2,7 +2,11 @@ from __future__ import print_function
 import os
 import re
 import sys
+import pytz
+import base64
+import hashlib
 import argparse
+import datetime
 from math import log
 from dateutil.parser import parse as parse_datetime
 from azure.storage.blob import BlobService
@@ -62,6 +66,33 @@ def get_local_files(paths, recursive=False):
             for sub_path in get_local_files(sub_files, recursive=recursive):
                 yield sub_path
 
+# Blob|str
+def get_fresher(blob, file_path):
+    blob_dt = blob.last_modified
+    file_dt = datetime.datetime.utcfromtimestamp(os.path.getmtime(file_path)).replace(tzinfo=pytz.UTC)
+    blob_cl = blob.content_length
+    file_cl = os.path.getsize(file_path)
+    fresher = [blob, None, file_path][(blob_dt>file_dt)-(blob_dt<file_dt)+1]
+
+    if file_cl != blob_cl:
+        return fresher
+
+    if file_cl > 1024*1024*64:
+        return None
+
+    if blob.content_md5 == md5(file_path):
+        return None
+
+    return fresher
+
+# byte
+def md5(fname):
+    hash = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash.update(chunk)
+    return hash.digest()
+
 class Blob(object):
     # void
     def __init__(self, service, blob):
@@ -70,11 +101,15 @@ class Blob(object):
 
     @property
     def last_modified(self):
-        return parse_datetime(self.blob.properties.last_modified)
-    
+        return parse_datetime(self.blob.properties.last_modified).replace(tzinfo=pytz.UTC)
+
     @property
     def content_length(self):
         return self.blob.properties.content_length
+
+    @property
+    def content_md5(self):
+        return base64.b64decode(self.blob.properties.content_md5)
 
     @property
     def path(self):
@@ -260,32 +295,61 @@ class BlobStorage(object):
         return blob_path, file_path
 
     # genexp<tuple<str,str>>
-    def get_download_path_pairs(self, file_path, prefix=False, skip_existing=False):
+    def get_download_path_pairs(self, file_path, prefix=False, skip_existing=False, sync=False):
+        # Ignore if no blob path is defined.
         if not self.blob_path:
             raise BlobPathRequired(u'Blob path is required for `get` command.')
 
+        # Single file download scenario.
         if not prefix:
+            # Skip if the file is already existing.
             if skip_existing and os.path.exists(file_path):
                 return
+
+            # Only downloads the not existing or the updated files (based on file size).
+            if sync and os.path.exists(file_path):
+                blob = self.get_blob()
+                if get_fresher(blob, file_path) != blob:
+                    return
+
+            # Return the caluclated path of the file.
             yield self.get_download_path_pair(self.blob_path, file_path)
             return
 
-        blob_paths = [ blob.path for blob in self.list_blobs() ]
-        common_prefix = os.path.split(os.path.commonprefix(blob_paths))[0]
+        # List the blobs with the given prefix in the ABS.
+        blob_paths, blob_paths_dict = [], {}
+        for blob in self.list_blobs():
+            blob_paths.append(blob.path)
+            blob_paths_dict[blob.path] = blob
+
+        # Determine the common prefix between the blobs.
+        common_prefix = os.path.split(os.path.commonprefix(blob_paths_dict.keys()))[0]
         resolved_file_paths = []
+
         for blob_path in blob_paths:
+            # Determine the input, output path pairs.
             bp, fp = self.get_download_path_pair(blob_path, file_path, common_prefix=common_prefix)
+
+            # If any of the files want to write to the same file, raise an error.
             if fp in resolved_file_paths:
                 raise DirectoryRequired('Can not use the same path (`{}`) for multiple blob!' \
                     .format(fp))
+
+            # Ignore the files that already exists.
             if skip_existing and os.path.exists(fp):
                 continue
+
+            # Only downloads the not existing or the updated files (based on file size).
+            if sync and os.path.exists(fp) and get_fresher(blob_paths_dict[blob_path], fp) != blob_paths_dict[blob_path]:
+                continue
+
             resolved_file_paths.append(fp)
             yield bp, fp
 
     # void
-    def download_blobs(self, file_path, prefix=False, skip_existing=False):
-        for blob_path, file_path in self.get_download_path_pairs(file_path, prefix=prefix, skip_existing=skip_existing):
+    def download_blobs(self, file_path, prefix=False, skip_existing=False, sync=False):
+        # Iterates over the final input, output paths and download them.
+        for blob_path, file_path in self.get_download_path_pairs(file_path, prefix=prefix, skip_existing=skip_existing, sync=sync):
             self.execute(self.download_fn, 'Download `%(url)s` into `%(rel_file_path)s`', \
                 blob_path=blob_path, file_path=file_path, rel_file_path=os.path.relpath(file_path), \
                 url=u'{}/{}'.format(self.url, blob_path))
@@ -333,6 +397,7 @@ def get(args=sys.argv[1:]):
     parser.add_argument('-p', '--prefix', help='download all blobs with prefix', action='store_true')
     parser.add_argument('--dryrun', help='just printing and not deleting.', action='store_true')
     parser.add_argument('--skip_existing', help='skip the already existing files', action='store_true')
+    parser.add_argument('--sync', help='download only the newer/changed files', action='store_true')
     parser.add_argument('wasbs_path', help='remote path for Azure Blob Storage.')
     parser.add_argument('file_path', help='local file or directory path.')
     args = parser.parse_args(args)
@@ -342,4 +407,4 @@ def get(args=sys.argv[1:]):
         os.makedirs(args.file_path)
 
     storage = BlobStorage(args.wasbs_path, args.dryrun)
-    storage.download_blobs(os.path.abspath(args.file_path), args.prefix, args.skip_existing)
+    storage.download_blobs(os.path.abspath(args.file_path), args.prefix, args.skip_existing, args.sync)
