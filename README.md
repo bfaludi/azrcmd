@@ -6,7 +6,8 @@
 ![License](https://img.shields.io/pypi/l/azrcmd.svg)
 
 Azure Blob Store command line tool to download and upload files. It works in Python **2.7 & 3.3+**.
-This package was crafted for using Azure Blob Store in **Linux** or **OSX**! Windows is not supported.
+This package was crafted for using Azure Blob Store in **Linux** or **OSX**! Windows is not supported. 
+It was heavily inspired by [s3cmd](http://s3tools.org/s3cmd).
 
 ## Installation
 
@@ -66,6 +67,7 @@ Download files and directories with the `--prefix` parameter.
 $ azrcmd-get --prefix wasbc://container/path-prefix dirname/
 ```
 
+It always override the already existing files! If you want to turn off this behaviour, please use the `--skip_existing` parameter.
 You can test the methods with the `--dryrun` parameter.
 
 #### List files

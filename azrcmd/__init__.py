@@ -248,7 +248,6 @@ class BlobStorage(object):
             if os.path.exists(file_path) and os.path.isdir(file_path) and common_prefix is None \
             else file_path
 
-        # print(repr(file_path), repr(blob_path), repr(common_prefix))
         if common_prefix:
             file_path = os.path.join(file_path, blob_path.split(common_prefix)[-1].strip('/'))
         elif common_prefix == u'':
@@ -261,11 +260,13 @@ class BlobStorage(object):
         return blob_path, file_path
 
     # genexp<tuple<str,str>>
-    def get_download_path_pairs(self, file_path, prefix=False):
+    def get_download_path_pairs(self, file_path, prefix=False, skip_existing=False):
         if not self.blob_path:
             raise BlobPathRequired(u'Blob path is required for `get` command.')
 
         if not prefix:
+            if skip_existing and os.path.exists(file_path):
+                return
             yield self.get_download_path_pair(self.blob_path, file_path)
             return
 
@@ -277,12 +278,14 @@ class BlobStorage(object):
             if fp in resolved_file_paths:
                 raise DirectoryRequired('Can not use the same path (`{}`) for multiple blob!' \
                     .format(fp))
+            if skip_existing and os.path.exists(fp):
+                continue
             resolved_file_paths.append(fp)
             yield bp, fp
 
     # void
-    def download_blobs(self, file_path, prefix=False):
-        for blob_path, file_path in self.get_download_path_pairs(file_path, prefix=prefix):
+    def download_blobs(self, file_path, prefix=False, skip_existing=False):
+        for blob_path, file_path in self.get_download_path_pairs(file_path, prefix=prefix, skip_existing=skip_existing):
             self.execute(self.download_fn, 'Download `%(url)s` into `%(rel_file_path)s`', \
                 blob_path=blob_path, file_path=file_path, rel_file_path=os.path.relpath(file_path), \
                 url=u'{}/{}'.format(self.url, blob_path))
@@ -329,6 +332,7 @@ def get(args=sys.argv[1:]):
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--prefix', help='download all blobs with prefix', action='store_true')
     parser.add_argument('--dryrun', help='just printing and not deleting.', action='store_true')
+    parser.add_argument('--skip_existing', help='skip the already existing files', action='store_true')
     parser.add_argument('wasbs_path', help='remote path for Azure Blob Storage.')
     parser.add_argument('file_path', help='local file or directory path.')
     args = parser.parse_args(args)
@@ -338,4 +342,4 @@ def get(args=sys.argv[1:]):
         os.makedirs(args.file_path)
 
     storage = BlobStorage(args.wasbs_path, args.dryrun)
-    storage.download_blobs(os.path.abspath(args.file_path), args.prefix)
+    storage.download_blobs(os.path.abspath(args.file_path), args.prefix, args.skip_existing)
