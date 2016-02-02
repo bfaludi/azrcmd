@@ -15,6 +15,8 @@ setup(
     license = 'MIT',
     install_requires = [
         'azure-storage',
+        "pytz",
+        "progressbar2"
     ],
     entry_points = {
         'console_scripts': [
