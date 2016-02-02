@@ -68,6 +68,7 @@ $ azrcmd-get --prefix wasbc://container/path-prefix dirname/
 ```
 
 It always override the already existing files! If you want to turn off this behaviour, please use the `--skip_existing` parameter.
+Of course, if you only want to download the new or changed blobs than you'd use the `--sync` attribute.
 You can test the methods with the `--dryrun` parameter.
 
 #### List files
