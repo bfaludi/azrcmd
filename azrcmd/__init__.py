@@ -310,7 +310,7 @@ class BlobStorage(object):
             # Only downloads the not existing or the updated files (based on file size).
             if sync and os.path.exists(file_path):
                 blob = self.get_blob()
-                if get_fresher(blob, file_path) != blob:
+                if blob and get_fresher(blob, file_path) != blob:
                     return
 
             # Return the caluclated path of the file.
