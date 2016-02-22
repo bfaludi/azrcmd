@@ -324,7 +324,9 @@ class BlobStorage(object):
             blob_paths_dict[blob.path] = blob
 
         # Determine the common prefix between the blobs.
-        common_prefix = os.path.split(os.path.commonprefix(blob_paths_dict.keys()))[0]
+        common_prefix = os.path.dirname(file_path) \
+            if not file_path.endswith('/') \
+            else file_path
         resolved_file_paths = []
 
         for blob_path in blob_paths:

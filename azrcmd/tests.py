@@ -343,20 +343,39 @@ class TestGetPaths(unittest.TestCase):
         self.assertEqual(res[1], ('directory/file-2.txt','directory/file-2.txt'))
         self.assertEqual(res[2], ('directory/file-3.txt','directory/file-3.txt'))
 
+    def test_prefixed_multiple_file_from_directory_with_slash(self):
+        service = BlobStorage('wasbs://container/file')
+        service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
+        os.mkdir('directory')
+        res = list(service.get_download_path_pairs('directory/', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('directory/file-1.txt','directory/file-1.txt'))
+        self.assertEqual(res[1], ('directory/file-2.txt','directory/file-2.txt'))
+        self.assertEqual(res[2], ('directory/file-3.txt','directory/file-3.txt'))
+
     def test_prefixed_multiple_file_from_directory_without_slash(self):
         service = BlobStorage('wasbs://container/file')
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
         os.mkdir('directory')
         res = list(service.get_download_path_pairs('directory', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','directory/file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','directory/file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','directory/file-3.txt'))
+        self.assertEqual(res[0], ('directory/file-1.txt','directory/directory/file-1.txt'))
+        self.assertEqual(res[1], ('directory/file-2.txt','directory/directory/file-2.txt'))
+        self.assertEqual(res[2], ('directory/file-3.txt','directory/directory/file-3.txt'))
 
     def test_prefixed_multiple_file_from_directory_without_slash_into_non_exists_dir(self):
         service = BlobStorage('wasbs://container/file')
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
         res = list(service.get_download_path_pairs('directory', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('directory/file-1.txt','directory/directory/file-1.txt'))
+        self.assertEqual(res[1], ('directory/file-2.txt','directory/directory/file-2.txt'))
+        self.assertEqual(res[2], ('directory/file-3.txt','directory/directory/file-3.txt'))
+
+    def test_prefixed_multiple_file_from_directory_with_slash_into_non_exists_dir(self):
+        service = BlobStorage('wasbs://container/file')
+        service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
+        res = list(service.get_download_path_pairs('directory/', prefix=True))
         self.assertEqual(len(res), 3)
         self.assertEqual(res[0], ('directory/file-1.txt','directory/file-1.txt'))
         self.assertEqual(res[1], ('directory/file-2.txt','directory/file-2.txt'))
@@ -367,9 +386,9 @@ class TestGetPaths(unittest.TestCase):
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
         res = list(service.get_download_path_pairs('.', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','./file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','./file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','./file-3.txt'))
+        self.assertEqual(res[0], ('directory/file-1.txt','./directory/file-1.txt'))
+        self.assertEqual(res[1], ('directory/file-2.txt','./directory/file-2.txt'))
+        self.assertEqual(res[2], ('directory/file-3.txt','./directory/file-3.txt'))
 
     def test_prefixed_multiple_file_from_directory_skip_existing(self):
         service = BlobStorage('wasbs://container/file')
