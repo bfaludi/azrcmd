@@ -10,7 +10,7 @@ import argparse
 import datetime
 from math import log
 from dateutil.parser import parse as parse_datetime
-from azure.storage.blob import BlobService
+from azure.storage.blob import BlockBlobService
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 
 if sys.version_info[0] == 3:
@@ -138,7 +138,7 @@ class BlobStorage(object):
 
         self.blob_path = self.blob_path or None
         self.pbar = None
-        self.service = BlobService(
+        self.service = BlockBlobService(
             account_name=os.environ['AZURE_STORAGE_ACCOUNT'], 
             account_key=os.environ['AZURE_STORAGE_ACCESS_KEY'])
 
@@ -324,7 +324,9 @@ class BlobStorage(object):
             blob_paths_dict[blob.path] = blob
 
         # Determine the common prefix between the blobs.
-        common_prefix = os.path.split(os.path.commonprefix(blob_paths_dict.keys()))[0]
+        common_prefix = os.path.dirname(self.blob_path) \
+            if not self.blob_path.endswith('/') \
+            else self.blob_path
         resolved_file_paths = []
 
         for blob_path in blob_paths:
