@@ -65,6 +65,7 @@ Download files and directories with the `--prefix` parameter.
 
 ```bash
 $ azrcmd-get --prefix wasbc://container/path-prefix dirname/
+$ azrcmd-get --prefix wasbc://container/path-prefix/ dirname/
 ```
 
 It always override the already existing files! If you want to turn off this behaviour, please use the `--skip_existing` parameter.

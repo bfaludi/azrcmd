@@ -178,6 +178,8 @@ class TestGetPaths(unittest.TestCase):
     def tearDown(self):
         if os.path.exists('directory'):
             shutil.rmtree('directory')
+        if os.path.exists('folder'):
+            shutil.rmtree('folder')
 
     def test_without_path(self):
         service = BlobStorage('wasbs://container')
@@ -331,74 +333,123 @@ class TestGetPaths(unittest.TestCase):
         self.assertEqual(res[1], ('dir2/file-3.txt','directory/dir2/file-3.txt'))
 
     def _list_blobs_multiple_dirs_with_same_root(self):
-        return map(self.Blob, [u'directory/file-1.txt','directory/file-2.txt','directory/file-3.txt'])
+        return map(self.Blob, [u'upper/directory/file-1.txt','upper/directory/file-2.txt','upper/directory/file-3.txt'])
 
-    def test_prefixed_multiple_file_from_directory_with_slash(self):
-        service = BlobStorage('wasbs://container/file')
+    def test_prefixed_multiple_file_from_prefix_without_slash(self):
+        service = BlobStorage('wasbs://container/upper/direct')
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
-        os.mkdir('directory')
-        res = list(service.get_download_path_pairs('directory/', prefix=True))
+        os.mkdir('folder')
+
+        # With directory with slash
+        res = list(service.get_download_path_pairs('folder/', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','directory/file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','directory/file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','directory/file-3.txt'))
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/directory/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/directory/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/directory/file-3.txt'))
 
-    def test_prefixed_multiple_file_from_directory_with_slash(self):
-        service = BlobStorage('wasbs://container/file')
-        service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
-        os.mkdir('directory')
-        res = list(service.get_download_path_pairs('directory/', prefix=True))
+        # With directory without slash
+        res = list(service.get_download_path_pairs('folder', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','directory/file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','directory/file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','directory/file-3.txt'))
-
-    def test_prefixed_multiple_file_from_directory_without_slash(self):
-        service = BlobStorage('wasbs://container/file')
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/directory/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/directory/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/directory/file-3.txt'))
+        
+    def test_prefixed_multiple_file_from_prefix_with_slash(self):
+        service = BlobStorage('wasbs://container/upper/directory/')
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
-        os.mkdir('directory')
-        res = list(service.get_download_path_pairs('directory', prefix=True))
+        os.mkdir('folder')
+
+        # With directory with slash
+        res = list(service.get_download_path_pairs('folder/', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','directory/directory/file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','directory/directory/file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','directory/directory/file-3.txt'))
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/file-3.txt'))
 
-    def test_prefixed_multiple_file_from_directory_without_slash_into_non_exists_dir(self):
-        service = BlobStorage('wasbs://container/file')
-        service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
-        res = list(service.get_download_path_pairs('directory', prefix=True))
+        # With directory without slash
+        res = list(service.get_download_path_pairs('folder', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','directory/directory/file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','directory/directory/file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','directory/directory/file-3.txt'))
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/file-3.txt'))
 
-    def test_prefixed_multiple_file_from_directory_with_slash_into_non_exists_dir(self):
-        service = BlobStorage('wasbs://container/file')
+    def test_prefixed_multiple_file_from_prefix_without_slash(self):
+        service = BlobStorage('wasbs://container/upper/direct')
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
-        res = list(service.get_download_path_pairs('directory/', prefix=True))
+
+        # With directory with slash
+        res = list(service.get_download_path_pairs('folder/', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','directory/file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','directory/file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','directory/file-3.txt'))
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/directory/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/directory/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/directory/file-3.txt'))
 
-    def test_prefixed_multiple_file_from_directory_without_slash_into_current(self):
-        service = BlobStorage('wasbs://container/file')
+        # With directory without slash
+        res = list(service.get_download_path_pairs('folder', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/directory/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/directory/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/directory/file-3.txt'))
+        
+    def test_prefixed_multiple_file_from_prefix_with_slash(self):
+        service = BlobStorage('wasbs://container/upper/directory/')
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
+
+        # With directory with slash
+        res = list(service.get_download_path_pairs('folder/', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/file-3.txt'))
+
+        # With directory without slash
+        res = list(service.get_download_path_pairs('folder', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','folder/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','folder/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','folder/file-3.txt'))
+
+    def test_prefixed_multiple_file_from_prefix_without_slash_into_current(self):
+        service = BlobStorage('wasbs://container/upper/direct')
+        service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
+
         res = list(service.get_download_path_pairs('.', prefix=True))
         self.assertEqual(len(res), 3)
-        self.assertEqual(res[0], ('directory/file-1.txt','./directory/file-1.txt'))
-        self.assertEqual(res[1], ('directory/file-2.txt','./directory/file-2.txt'))
-        self.assertEqual(res[2], ('directory/file-3.txt','./directory/file-3.txt'))
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','./directory/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','./directory/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','./directory/file-3.txt'))
+        
+        res = list(service.get_download_path_pairs('./', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','./directory/file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','./directory/file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','./directory/file-3.txt'))
+
+    def test_prefixed_multiple_file_from_prefix_with_slash_into_current(self):
+        service = BlobStorage('wasbs://container/upper/directory/')
+        service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
+
+        res = list(service.get_download_path_pairs('.', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','./file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','./file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','./file-3.txt'))
+        
+        res = list(service.get_download_path_pairs('./', prefix=True))
+        self.assertEqual(len(res), 3)
+        self.assertEqual(res[0], ('upper/directory/file-1.txt','./file-1.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-2.txt','./file-2.txt'))
+        self.assertEqual(res[2], ('upper/directory/file-3.txt','./file-3.txt'))
 
     def test_prefixed_multiple_file_from_directory_skip_existing(self):
-        service = BlobStorage('wasbs://container/file')
+        service = BlobStorage('wasbs://container/upper/directory/')
         service.list_blobs = self._list_blobs_multiple_dirs_with_same_root
-        os.mkdir('directory')
-        io.open('directory/file-1.txt','a').close()
-        res = list(service.get_download_path_pairs('directory/', prefix=True, skip_existing=True))
+        os.mkdir('folder')
+        io.open('folder/file-1.txt','a').close()
+        res = list(service.get_download_path_pairs('folder/', prefix=True, skip_existing=True))
         self.assertEqual(len(res), 2)
-        self.assertEqual(res[0], ('directory/file-2.txt','directory/file-2.txt'))
-        self.assertEqual(res[1], ('directory/file-3.txt','directory/file-3.txt'))
+        self.assertEqual(res[0], ('upper/directory/file-2.txt','folder/file-2.txt'))
+        self.assertEqual(res[1], ('upper/directory/file-3.txt','folder/file-3.txt'))
 
     # Test --sync attribute
     def test_single_file_into_directory_with_name_sync_new_on_bs(self):
