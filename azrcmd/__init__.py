@@ -201,7 +201,7 @@ class BlobStorage(object):
 
     # void
     def upload_fn(self, blob_path, file_path, rel_file_path=None, url=None):
-        self.service.put_block_blob_from_path(self.container, blob_path, file_path, \
+        self.service.create_blob_from_path(self.container, blob_path, file_path, \
             max_connections=int(os.environ.get('AZURE_STORAGE_MAX_CONNECTIONS',1)), \
             progress_callback=self.show_progress)
         self.pbar.finish()
