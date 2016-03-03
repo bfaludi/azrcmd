@@ -9,7 +9,6 @@ import hashlib
 import argparse
 import datetime
 from math import log
-from dateutil.parser import parse as parse_datetime
 from azure.storage.blob import BlockBlobService
 from progressbar import ProgressBar, Percentage, Bar, ETA, FileTransferSpeed
 
@@ -102,7 +101,7 @@ class Blob(object):
 
     @property
     def last_modified(self):
-        return parse_datetime(self.blob.properties.last_modified).replace(tzinfo=pytz.UTC)
+        return self.blob.properties.last_modified.replace(tzinfo=pytz.UTC)
 
     @property
     def content_length(self):
