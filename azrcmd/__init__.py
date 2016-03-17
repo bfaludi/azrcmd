@@ -77,6 +77,9 @@ def get_fresher(blob, file_path):
     if file_cl != blob_cl:
         return fresher
 
+    if file_cl == 0:
+        return None
+
     if file_cl > 1024*1024*64:
         return None
 
@@ -109,7 +112,9 @@ class Blob(object):
 
     @property
     def content_md5(self):
-        return base64.b64decode(self.blob.properties.content_md5)
+        if not self.blob.properties.content_settings.content_md5:
+            return None
+        return base64.b64decode(self.blob.properties.content_settings.content_md5)
 
     @property
     def path(self):
