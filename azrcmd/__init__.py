@@ -143,8 +143,8 @@ class BlobStorage(object):
         self.blob_path = self.blob_path or None
         self.pbar = None
         self.service = BlockBlobService(
-            account_name=os.environ['AZURE_STORAGE_ACCOUNT'], 
-            account_key=os.environ['AZURE_STORAGE_ACCESS_KEY'])
+            account_name=os.environ['AZURE_STORAGE_ACCOUNT'].strip(), 
+            account_key=os.environ['AZURE_STORAGE_ACCESS_KEY'].strip())
 
     @property
     def url(self):
