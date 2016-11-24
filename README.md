@@ -14,10 +14,10 @@ It was heavily inspired by [s3cmd](http://s3tools.org/s3cmd).
 You can install easily with `pip`.
 
 ```bash
-$ pip install azrcmd
+$ `sudo -H pip install azrcmd --ignore-installed markerlib`
 ```
 
-**Note**: You won't be able to install it with `easy_install` because of the incompatibility between `setuptools` and `azure` libraries. 
+**Note**: You won't be able to install it with `easy_install` because of the incompatibility between `setuptools` and `azure` libraries. The upper hack is required because `azure-storage` is buggy and really hard to install.
 
 Create your configuration file as a bash script or put this information on your `.bash_profile`.
 
